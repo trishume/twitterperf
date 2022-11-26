@@ -1,0 +1,15 @@
+[package]
+name = "twitterperf"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+bytemuck = { version = "1.12.3", features = ["derive"] }
+expect-test = "1.4.0"
+memmap2 = "0.5.8"
+nanorand = "0.7.0"
+rand = "0.8.5"
+rand_distr = "0.4.3"
+static_assertions = "1.1.0"
