@@ -15,6 +15,18 @@ pub struct Tweet {
     pub retweets: u32,
 }
 
+impl Tweet {
+    pub fn dummy(ts: NonZeroU64) -> Self {
+        Tweet {
+            content: [0; TWEET_BYTES],
+            ts: ts,
+            likes: 0,
+            quotes: 0,
+            retweets: 0,
+        }
+    }
+}
+
 // assert_eq_size!([u8; 304], Tweet);
 
 pub type TweetIdx = u32;
@@ -41,7 +53,8 @@ pub type UserIdx = u32;
 pub struct User {
     // This would be better as a Vec for mutation but for fast data loading we use one giant slice
     pub follows_idx: usize,
-    pub num_follows: usize,
+    pub num_follows: u32,
+    pub num_followers: u32,
 }
 
 pub struct Graph<'a> {
@@ -53,4 +66,17 @@ pub struct Datastore<'a> {
     pub graph: Graph<'a>,
     pub tweets: Vec<ChainedTweet>,
     pub feeds: Vec<FeedChain>,
+}
+
+impl<'a> Datastore<'a> {
+    pub fn add_tweet(&mut self, tweet: Tweet, user_id: UserIdx) {
+        let prev_tweet = self.feeds[user_id as usize];
+        let tweet_idx = self.tweets.len() as TweetIdx;
+        self.feeds[user_id as usize] = Some(NextLink {
+            ts: tweet.ts,
+            tweet_idx,
+        });
+        let chained = ChainedTweet { tweet, prev_tweet };
+        self.tweets.push(chained);
+    }
 }

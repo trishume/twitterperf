@@ -10,18 +10,18 @@ pub struct CachedTimeline {
 }
 
 pub struct Timeline {
-    tweets: Vec<Tweet>,
+    pub tweets: Vec<Tweet>,
 }
 
 impl Timeline {
-    fn for_user(data: &Datastore, user_idx: UserIdx, max_len: usize) -> Self {
+    pub fn for_user(data: &Datastore, user_idx: UserIdx, max_len: usize) -> Self {
         let mut tweets: Vec<Tweet> = Vec::with_capacity(max_len);
 
         let user = &data.graph.users[user_idx as usize];
-        let mut heap: BinaryHeap<NextLink> = BinaryHeap::with_capacity(user.num_follows);
+        let mut heap: BinaryHeap<NextLink> = BinaryHeap::with_capacity(user.num_follows as usize);
 
         // seed heap
-        for follow in &data.graph.follows[user.follows_idx..][..user.num_follows] {
+        for follow in &data.graph.follows[user.follows_idx..][..user.num_follows as usize] {
             if let Some(next_link) = data.feeds[*follow as usize] {
                 heap.push(next_link)
             }

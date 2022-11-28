@@ -1,4 +1,5 @@
 // process the graph from https://snap.stanford.edu/data/twitter-2010.html
+// time cat /Users/tristan/Downloads/twitter-2010.txt.gz | gunzip | cargo run --release --example load_graph
 
 use bytemuck::cast_slice;
 use std::{
@@ -8,7 +9,7 @@ use std::{
 
 use twitterperf::data::*;
 
-const TEST: bool = true;
+const TEST: bool = false;
 
 fn main() {
     let num_users = 41652230;
@@ -37,7 +38,8 @@ fn main() {
     for ls in &graph {
         let user = User {
             follows_idx: follows.len(),
-            num_follows: ls.len(),
+            num_follows: ls.len() as u32,
+            num_followers: 0,
         };
         users.push(user);
         for x in ls {
@@ -46,6 +48,12 @@ fn main() {
     }
 
     eprintln!("Done phase 2");
+
+    for f in &follows {
+        users[*f as usize].num_followers += 1;
+    }
+
+    eprintln!("Done phase 3");
 
     if TEST {
         return;
