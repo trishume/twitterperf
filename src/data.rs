@@ -79,4 +79,14 @@ impl<'a> Datastore<'a> {
         let chained = ChainedTweet { tweet, prev_tweet };
         self.tweets.push(chained);
     }
+
+    pub fn prefetch_tweet(&self, tweet_idx: TweetIdx) {
+        let tweet_ptr = &self.tweets[tweet_idx as usize] as *const ChainedTweet;
+        unsafe {
+            for cache_line in 0..3 {
+                let line_ptr = (tweet_ptr as *const i8).offset(64 * cache_line);
+                core::arch::x86_64::_mm_prefetch(line_ptr, core::arch::x86_64::_MM_HINT_T0)
+            }
+        }
+    }
 }

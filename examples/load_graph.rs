@@ -9,7 +9,7 @@ use std::{
 
 use twitterperf::data::*;
 
-const TEST: bool = false;
+const TEST: bool = true;
 
 fn main() {
     let num_users = 41652230;

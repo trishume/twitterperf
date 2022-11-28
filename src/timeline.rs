@@ -1,5 +1,5 @@
 #![allow(dead_code)]
-use std::collections::BinaryHeap;
+use std::{collections::BinaryHeap, num::NonZeroU64};
 
 use crate::data::*;
 
@@ -30,9 +30,11 @@ impl Timeline {
         // compose timeline
         while let Some(NextLink { ts: _, tweet_idx }) = heap.pop() {
             let chain = &data.tweets[tweet_idx as usize];
+            // tweets.push(Tweet::dummy(NonZeroU64::new(1).unwrap()));
             tweets.push(chain.tweet.clone());
 
             if let Some(next_link) = chain.prev_tweet {
+                // data.prefetch_tweet(next_link.tweet_idx);
                 heap.push(next_link)
             }
         }

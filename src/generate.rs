@@ -155,7 +155,7 @@ mod tests {
         let loader = LoadGraph::new().unwrap();
         let graph = loader.graph();
 
-        let n_tweets = 3_000_000;
+        let n_tweets = 4_000_000;
         let mut config = TweetGeneratorConfig::default();
         config.capacity = n_tweets;
         let (mut gen, mut data) = TweetGenerator::new(config, graph);
@@ -173,8 +173,8 @@ mod tests {
             total_viewed += timeline.tweets.len();
         }
         let avg_timeline_size = total_viewed as f64 / n_views as f64;
-        f_eq(avg_timeline_size, expect!["52.785"]);
+        f_eq(avg_timeline_size, expect!["68.653"]);
         let expansion = (avg_timeline_size * gen.viewing_users.len() as f64) / n_tweets as f64;
-        f_eq(expansion, expect!["158.901"]);
+        f_eq(expansion, expect!["155.003"]);
     }
 }
