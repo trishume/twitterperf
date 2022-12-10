@@ -18,9 +18,10 @@ fn main() {
     trace_function(1, &[0; 4], || gen.add_tweets(&mut data, n_tweets));
 
     let _x = AutoTrace::new(2, &[0usize; 4]);
-    let n_views = 10_000;
+    let n_views = 100_000;
     let mut total_viewed = 0usize;
     // let mut total_likes = 0u32;
+    eprintln!("Starting fetches");
     let start = Instant::now();
     let mut fetcher = TimelineFetcher::default();
     for _ in 0..n_views {
