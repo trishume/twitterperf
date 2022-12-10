@@ -30,7 +30,7 @@ impl Default for TweetGeneratorConfig {
 pub struct TweetGenerator {
     // config: TweetGeneratorConfig,
     tweeting_users: Vec<UserIdx>,
-    viewing_users: Vec<UserIdx>,
+    pub viewing_users: Vec<UserIdx>,
     rng: WyRand,
     ts: NonZeroU64,
 }
@@ -119,7 +119,7 @@ impl LoadGraph {
 
 #[cfg(test)]
 mod tests {
-    use crate::timeline::Timeline;
+    use crate::timeline::TimelineFetcher;
 
     use super::*;
     use expect_test::{expect, Expect};
@@ -167,14 +167,15 @@ mod tests {
 
         let n_views = 100_000;
         let mut total_viewed = 0usize;
+        let mut fetcher = TimelineFetcher::default();
         for _ in 0..n_views {
             let user_idx = gen.gen_view();
-            let timeline = Timeline::for_user(&data, user_idx, 200);
+            let timeline = fetcher.for_user(&data, user_idx, 200, START_TIME);
             total_viewed += timeline.tweets.len();
         }
         let avg_timeline_size = total_viewed as f64 / n_views as f64;
-        f_eq(avg_timeline_size, expect!["68.653"]);
+        f_eq(avg_timeline_size, expect!["41.480"]);
         let expansion = (avg_timeline_size * gen.viewing_users.len() as f64) / n_tweets as f64;
-        f_eq(expansion, expect!["155.003"]);
+        f_eq(expansion, expect!["93.652"]);
     }
 }

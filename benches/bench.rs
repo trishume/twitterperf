@@ -1,9 +1,10 @@
 use criterion::{
     black_box, criterion_group, criterion_main, Bencher, BenchmarkId, Criterion, Throughput,
 };
+use twitterperf::data::START_TIME;
 // use twitterperf::data::Datastore;
 use twitterperf::generate::{LoadGraph, TweetGenerator, TweetGeneratorConfig};
-use twitterperf::timeline::Timeline;
+use twitterperf::timeline::{Timeline, TimelineFetcher};
 
 // fn bench_merge<'a>(b: &mut Bencher, input: &'a mut (&'a mut TweetGenerator, &'a mut Datastore<'a>)) {
 //     let (gen, data) = input;
@@ -28,9 +29,10 @@ fn criterion_benchmark(c: &mut Criterion) {
     let mut group = c.benchmark_group("timeline");
     group.throughput(Throughput::Elements(69));
     group.bench_function("merge", |b| {
+        let mut fetcher = TimelineFetcher::default();
         b.iter(|| {
             let user_idx = black_box(gen.gen_view());
-            Timeline::for_user(&data, user_idx, 200)
+            fetcher.for_user(&data, user_idx, 200, START_TIME);
         })
     });
     group.finish()

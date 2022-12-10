@@ -5,10 +5,13 @@ use static_assertions::assert_eq_size;
 
 pub const TWEET_BYTES: usize = 280;
 
+pub type Timestamp = NonZeroU64;
+pub const START_TIME: Timestamp = unsafe { NonZeroU64::new_unchecked(1) };
+
 #[derive(Clone)]
 pub struct Tweet {
     pub content: [u8; TWEET_BYTES],
-    pub ts: NonZeroU64,
+    pub ts: Timestamp,
 
     pub likes: u32,
     pub quotes: u32,
@@ -16,10 +19,10 @@ pub struct Tweet {
 }
 
 impl Tweet {
-    pub fn dummy(ts: NonZeroU64) -> Self {
+    pub fn dummy(ts: Timestamp) -> Self {
         Tweet {
             content: [0; TWEET_BYTES],
-            ts: ts,
+            ts,
             likes: 0,
             quotes: 0,
             retweets: 0,
@@ -33,7 +36,7 @@ pub type TweetIdx = u32;
 
 #[derive(PartialEq, Eq, PartialOrd, Ord, Clone, Copy)]
 pub struct NextLink {
-    pub ts: NonZeroU64,
+    pub ts: Timestamp,
     pub tweet_idx: TweetIdx,
 }
 
@@ -60,6 +63,13 @@ pub struct User {
 pub struct Graph<'a> {
     pub users: &'a [User],
     pub follows: &'a [UserIdx],
+}
+
+impl<'a> Graph<'a> {
+    #[inline]
+    pub fn user_follows(&self, user: &User) -> &[UserIdx] {
+        &self.follows[user.follows_idx..][..user.num_follows as usize]
+    }
 }
 
 pub struct Datastore<'a> {
