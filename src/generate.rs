@@ -35,7 +35,9 @@ pub struct TweetGenerator {
 
 impl TweetGenerator {
     pub fn new<'a>(config: TweetGeneratorConfig, graph: Graph<'a>) -> (Self, Datastore<'a>) {
-        let feeds: Vec<AtomicChain> = (0..graph.users.len()).map(|_| AtomicChain::none()).collect();
+        let feeds: Vec<AtomicChain> = (0..graph.users.len())
+            .map(|_| AtomicChain::none())
+            .collect();
         let tweets = SharedPool::new().unwrap();
 
         let mut rng = WyRand::from_seed(config.seed.to_le_bytes());

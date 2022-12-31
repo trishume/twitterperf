@@ -1,8 +1,8 @@
-use std::ops::Index;
-use std::sync::Mutex;
-use std::sync::atomic::{AtomicUsize, Ordering};
-use std::ptr::{NonNull, self};
 use std::io;
+use std::ops::Index;
+use std::ptr::{self, NonNull};
+use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::Mutex;
 
 pub struct SharedPool<T> {
     len: AtomicUsize,
@@ -68,10 +68,12 @@ impl<T> Index<usize> for SharedPool<T> {
     #[inline]
     fn index(&self, i: usize) -> &T {
         let len = self.len.load(Ordering::SeqCst);
-        if i >= len { panic!("index out of bounds {i} for length {len}")}
+        if i >= len {
+            panic!("index out of bounds {i} for length {len}")
+        }
         unsafe {
             let item = self.buf.as_ptr().add(i);
-            & *item
+            &*item
         }
     }
 }

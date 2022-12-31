@@ -1,8 +1,8 @@
 use std::time::Instant;
 
-use twitterperf::data::{START_TIME};
+use twitterperf::data::START_TIME;
 use twitterperf::generate::{LoadGraph, TweetGenerator, TweetGeneratorConfig};
-use twitterperf::timeline::{TimelineFetcher};
+use twitterperf::timeline::TimelineFetcher;
 
 use signpost::{trace_function, AutoTrace};
 
@@ -26,7 +26,6 @@ fn main() {
     let add_dur = Instant::now() - add_start;
     let add_rate = n_test_add as f64 / add_dur.as_secs_f64();
     eprintln!("Benchmarked adding {n_test_add} tweets in {add_dur:?}: {add_rate:.3} tweets/s.");
-
 
     let _x = AutoTrace::new(2, &[0usize; 4]);
     let n_views = 100_000;

@@ -1,6 +1,6 @@
-use std::{num::{NonZeroU64, NonZeroU32}, sync::atomic::AtomicU64};
+use std::{num::NonZeroU32, sync::atomic::AtomicU64};
 
-use bytemuck::{Pod, Zeroable, NoUninit};
+use bytemuck::{NoUninit, Pod, Zeroable};
 use static_assertions::assert_eq_size;
 
 use crate::pool::SharedPool;
@@ -63,31 +63,22 @@ impl AtomicChain {
         AtomicChain(AtomicU64::new(0))
     }
 
-    fn from_u64(as_u64: u64) -> FeedChain {
+    pub fn set(&self, next: NextLink) {
+        let as_u64: u64 = bytemuck::cast(next);
+        self.0.store(as_u64, std::sync::atomic::Ordering::SeqCst);
+    }
+
+    pub fn fetch(&self) -> Option<NextLink> {
+        let as_u64 = self.0.load(std::sync::atomic::Ordering::SeqCst);
         // we hope LLVM optimizes this into a no-op
         let pod: PodNextLink = bytemuck::cast(as_u64);
         match Timestamp::new(pod.0) {
-            Some(ts) => Some(NextLink {ts, tweet_idx: pod.1 }),
+            Some(ts) => Some(NextLink {
+                ts,
+                tweet_idx: pod.1,
+            }),
             None => None,
         }
-    }
-
-    pub fn try_add(&self, f: impl Fn(FeedChain) -> NextLink) {
-        let mut cur_u64 = self.0.load(std::sync::atomic::Ordering::SeqCst);
-        loop {
-            let next = f(Self::from_u64(cur_u64));
-            let as_u64: u64 = bytemuck::cast(next);
-            let res = self.0.compare_exchange(cur_u64, as_u64, std::sync::atomic::Ordering::SeqCst, std::sync::atomic::Ordering::SeqCst);
-            match res {
-                Ok(_) => break,
-                Err(v) => cur_u64 = v,
-            }
-        }
-    }
-
-    pub fn fetch(&self) -> FeedChain {
-        let as_u64 = self.0.load(std::sync::atomic::Ordering::SeqCst);
-        Self::from_u64(as_u64)
     }
 }
 
@@ -130,14 +121,14 @@ pub struct Datastore<'a> {
 }
 
 impl<'a> Datastore<'a> {
-    pub fn add_tweet(&mut self, tweet: Tweet, user_id: UserIdx) {
+    /// This will clobber writes (in a safe way) if called concurrently
+    /// from multiple threads. Ideally we'd have a separate &mut handle for this
+    pub fn add_tweet(&self, tweet: Tweet, user_id: UserIdx) {
+        let prev_tweet = self.feeds[user_id as usize].fetch();
         let ts = tweet.ts;
         let chained = ChainedTweet { tweet, prev_tweet };
         let tweet_idx = self.tweets.push(chained) as TweetIdx;
-        self.feeds[user_id as usize].try_add(|prev_tweet| {
-            let prev_tweet = self.feeds[user_id as usize].fetch();
-            NextLink {ts, tweet_idx}
-        });
+        self.feeds[user_id as usize].set(NextLink { ts, tweet_idx });
     }
 
     pub fn prefetch_tweet(&self, tweet_idx: TweetIdx) {

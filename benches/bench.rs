@@ -20,7 +20,6 @@ fn criterion_benchmark(c: &mut Criterion) {
 
     let n_tweets = 4_000_000;
     let mut config = TweetGeneratorConfig::default();
-    config.capacity = n_tweets;
     let (mut gen, mut data) = TweetGenerator::new(config, graph);
 
     gen.add_tweets(&mut data, n_tweets);
