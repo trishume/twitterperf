@@ -22,7 +22,7 @@ impl Default for TweetGeneratorConfig {
             seed: 123,
             tweeter_follower_thresh: 20,
             viewer_follow_thresh: 20,
-            capacity: 1_000_000,
+            capacity: 40_000_000,
         }
     }
 }

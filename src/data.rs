@@ -3,7 +3,9 @@ use std::num::NonZeroU64;
 use bytemuck::{Pod, Zeroable};
 use static_assertions::assert_eq_size;
 
-pub const TWEET_BYTES: usize = 280;
+/// Leave room for a full 280 character plus some accents or emoji.
+/// A real implementation would have an escape hatch for longer tweets.
+pub const TWEET_BYTES: usize = 284;
 
 pub type Timestamp = NonZeroU64;
 pub const START_TIME: Timestamp = unsafe { NonZeroU64::new_unchecked(1) };
@@ -34,6 +36,9 @@ impl Tweet {
 
 pub type TweetIdx = u32;
 
+/// linked list of tweets to make appending fast and avoid space overhead
+/// a linked list of chunks of tweets would probably be faster because of
+/// cache locality of fetches, but I haven't implemented that
 #[derive(PartialEq, Eq, PartialOrd, Ord, Clone, Copy)]
 pub struct NextLink {
     pub ts: Timestamp,
@@ -60,6 +65,8 @@ pub struct User {
     pub num_followers: u32,
 }
 
+/// We store the Graph in a format we can mmap from a pre-baked file
+/// so that our tests can load a real graph faster
 pub struct Graph<'a> {
     pub users: &'a [User],
     pub follows: &'a [UserIdx],
@@ -67,7 +74,7 @@ pub struct Graph<'a> {
 
 impl<'a> Graph<'a> {
     #[inline]
-    pub fn user_follows(&self, user: &User) -> &[UserIdx] {
+    pub fn user_follows(&'a self, user: &User) -> &'a [UserIdx] {
         &self.follows[user.follows_idx..][..user.num_follows as usize]
     }
 }

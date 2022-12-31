@@ -10,12 +10,24 @@ fn main() {
     let loader = LoadGraph::new().unwrap();
     let graph = loader.graph();
 
-    let n_tweets = 30_000_000;
+    let n_test_add = 15_000_000;
+    let n_tweets = 30_000_000 - n_test_add;
     let mut config = TweetGeneratorConfig::default();
     config.capacity = n_tweets;
     let (mut gen, mut data) = TweetGenerator::new(config, graph);
 
+    let add_start = Instant::now();
     trace_function(1, &[0; 4], || gen.add_tweets(&mut data, n_tweets));
+    let add_dur = Instant::now() - add_start;
+    let add_rate = n_tweets as f64 / add_dur.as_secs_f64();
+    eprintln!("Initially added {n_tweets} tweets in {add_dur:?}: {add_rate:.3} tweets/s.");
+
+    let add_start = Instant::now();
+    trace_function(1, &[0; 4], || gen.add_tweets(&mut data, n_tweets));
+    let add_dur = Instant::now() - add_start;
+    let add_rate = n_test_add as f64 / add_dur.as_secs_f64();
+    eprintln!("Benchmarked adding {n_test_add} tweets in {add_dur:?}: {add_rate:.3} tweets/s.");
+
 
     let _x = AutoTrace::new(2, &[0usize; 4]);
     let n_views = 100_000;

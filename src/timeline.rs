@@ -55,11 +55,7 @@ pub struct TimelineFetcher {
 impl TimelineFetcher {
     #[inline]
     fn push_after(&mut self, link: Option<NextLink>, after: Timestamp) {
-        if let Some(link) = link {
-            if link.ts >= after {
-                self.heap.push(link);
-            }
-        }
+        link.filter(|l| l.ts >= after).map(|l| self.heap.push(l));
     }
 
     pub fn for_user<'a>(
