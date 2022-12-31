@@ -3,6 +3,8 @@ use std::num::NonZeroU64;
 use bytemuck::{Pod, Zeroable};
 use static_assertions::assert_eq_size;
 
+use crate::pool::SharedPool;
+
 /// Leave room for a full 280 character plus some accents or emoji.
 /// A real implementation would have an escape hatch for longer tweets.
 pub const TWEET_BYTES: usize = 284;
@@ -81,20 +83,17 @@ impl<'a> Graph<'a> {
 
 pub struct Datastore<'a> {
     pub graph: Graph<'a>,
-    pub tweets: Vec<ChainedTweet>,
+    pub tweets: SharedPool<ChainedTweet>,
     pub feeds: Vec<FeedChain>,
 }
 
 impl<'a> Datastore<'a> {
     pub fn add_tweet(&mut self, tweet: Tweet, user_id: UserIdx) {
         let prev_tweet = self.feeds[user_id as usize];
-        let tweet_idx = self.tweets.len() as TweetIdx;
-        self.feeds[user_id as usize] = Some(NextLink {
-            ts: tweet.ts,
-            tweet_idx,
-        });
+        let ts = tweet.ts;
         let chained = ChainedTweet { tweet, prev_tweet };
-        self.tweets.push(chained);
+        let tweet_idx = self.tweets.push(chained) as TweetIdx;
+        self.feeds[user_id as usize] = Some(NextLink { ts, tweet_idx });
     }
 
     pub fn prefetch_tweet(&self, tweet_idx: TweetIdx) {

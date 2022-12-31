@@ -12,8 +12,7 @@ fn main() {
 
     let n_test_add = 15_000_000;
     let n_tweets = 30_000_000 - n_test_add;
-    let mut config = TweetGeneratorConfig::default();
-    config.capacity = n_tweets;
+    let config = TweetGeneratorConfig::default();
     let (mut gen, mut data) = TweetGenerator::new(config, graph);
 
     let add_start = Instant::now();

@@ -1,6 +1,7 @@
 pub mod data;
 pub mod generate;
 pub mod timeline;
+pub mod pool;
 
 pub fn add(left: usize, right: usize) -> usize {
     left + right

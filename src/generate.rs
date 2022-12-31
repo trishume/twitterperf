@@ -1,4 +1,5 @@
 use crate::data::*;
+use crate::pool::SharedPool;
 
 use bytemuck::cast_slice;
 use memmap2::Mmap;
@@ -13,7 +14,6 @@ pub struct TweetGeneratorConfig {
     pub seed: u64,
     pub tweeter_follower_thresh: u32,
     pub viewer_follow_thresh: u32,
-    pub capacity: usize,
 }
 
 impl Default for TweetGeneratorConfig {
@@ -22,7 +22,6 @@ impl Default for TweetGeneratorConfig {
             seed: 123,
             tweeter_follower_thresh: 20,
             viewer_follow_thresh: 20,
-            capacity: 40_000_000,
         }
     }
 }
@@ -38,7 +37,7 @@ pub struct TweetGenerator {
 impl TweetGenerator {
     pub fn new<'a>(config: TweetGeneratorConfig, graph: Graph<'a>) -> (Self, Datastore<'a>) {
         let feeds = vec![None; graph.users.len()];
-        let tweets = Vec::with_capacity(config.capacity);
+        let tweets = SharedPool::new().unwrap();
 
         let mut rng = WyRand::from_seed(config.seed.to_le_bytes());
         let mut tweeting_users: Vec<u32> = graph
@@ -156,8 +155,7 @@ mod tests {
         let graph = loader.graph();
 
         let n_tweets = 4_000_000;
-        let mut config = TweetGeneratorConfig::default();
-        config.capacity = n_tweets;
+        let config = TweetGeneratorConfig::default();
         let (mut gen, mut data) = TweetGenerator::new(config, graph);
 
         n_eq(gen.viewing_users.len(), expect!["9031061"]);
