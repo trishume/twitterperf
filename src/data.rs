@@ -7,8 +7,10 @@ use crate::pool::SharedPool;
 
 /// Leave room for a full 280 character plus some accents or emoji.
 /// A real implementation would have an escape hatch for longer tweets.
-pub const TWEET_BYTES: usize = 284;
+pub const TWEET_BYTES: usize = 286;
 
+// non-zero so options including a timestamp don't take any more space
+// u32 since that's 100+ years of second-level precision and it lets us pack atomics
 pub type Timestamp = NonZeroU32;
 pub const START_TIME: Timestamp = unsafe { NonZeroU32::new_unchecked(1) };
 
@@ -38,6 +40,9 @@ impl Tweet {
 
 pub type TweetIdx = u32;
 
+/// linked list of tweets to make appending fast and avoid space overhead
+/// a linked list of chunks of tweets would probably be faster because of
+/// cache locality of fetches, but I haven't implemented that
 #[derive(PartialEq, Eq, PartialOrd, Ord, Clone, Copy, NoUninit)]
 #[repr(C)]
 pub struct NextLink {
@@ -53,9 +58,8 @@ pub type FeedChain = Option<NextLink>;
 struct PodNextLink(u32, u32);
 assert_eq_size!(AtomicU64, PodNextLink);
 
-/// linked list of tweets to make appending fast and avoid space overhead
-/// a linked list of chunks of tweets would probably be faster because of
-/// cache locality of fetches, but I haven't implemented that
+/// Top level feeds use an atomic link so we can mutate concurrently
+/// This effectively works by casting NextLink to a u64
 pub struct AtomicChain(AtomicU64);
 
 impl AtomicChain {
