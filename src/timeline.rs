@@ -71,7 +71,7 @@ impl TimelineFetcher {
 
         // seed heap
         for follow in data.graph.user_follows(user) {
-            self.push_after(data.feeds[*follow as usize], after);
+            self.push_after(data.feeds[*follow as usize].fetch(), after);
         }
 
         // compose timeline

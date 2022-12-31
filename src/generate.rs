@@ -7,7 +7,6 @@ use rand::seq::SliceRandom;
 use rand::SeedableRng;
 use rand_wyrand::WyRand;
 use std::fs::File;
-use std::num::NonZeroU64;
 use std::ops::Deref;
 
 pub struct TweetGeneratorConfig {
@@ -31,12 +30,12 @@ pub struct TweetGenerator {
     tweeting_users: Vec<UserIdx>,
     pub viewing_users: Vec<UserIdx>,
     rng: WyRand,
-    ts: NonZeroU64,
+    ts: Timestamp,
 }
 
 impl TweetGenerator {
     pub fn new<'a>(config: TweetGeneratorConfig, graph: Graph<'a>) -> (Self, Datastore<'a>) {
-        let feeds = vec![None; graph.users.len()];
+        let feeds: Vec<AtomicChain> = (0..graph.users.len()).map(|_| AtomicChain::none()).collect();
         let tweets = SharedPool::new().unwrap();
 
         let mut rng = WyRand::from_seed(config.seed.to_le_bytes());
@@ -61,7 +60,7 @@ impl TweetGenerator {
             tweeting_users,
             viewing_users,
             rng,
-            ts: NonZeroU64::new(1).unwrap(),
+            ts: START_TIME,
         };
 
         let data = Datastore {

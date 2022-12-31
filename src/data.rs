@@ -1,6 +1,6 @@
-use std::num::NonZeroU64;
+use std::{num::{NonZeroU64, NonZeroU32}, sync::atomic::AtomicU64};
 
-use bytemuck::{Pod, Zeroable};
+use bytemuck::{Pod, Zeroable, NoUninit};
 use static_assertions::assert_eq_size;
 
 use crate::pool::SharedPool;
@@ -9,8 +9,8 @@ use crate::pool::SharedPool;
 /// A real implementation would have an escape hatch for longer tweets.
 pub const TWEET_BYTES: usize = 284;
 
-pub type Timestamp = NonZeroU64;
-pub const START_TIME: Timestamp = unsafe { NonZeroU64::new_unchecked(1) };
+pub type Timestamp = NonZeroU32;
+pub const START_TIME: Timestamp = unsafe { NonZeroU32::new_unchecked(1) };
 
 #[derive(Clone)]
 pub struct Tweet {
@@ -38,16 +38,58 @@ impl Tweet {
 
 pub type TweetIdx = u32;
 
-/// linked list of tweets to make appending fast and avoid space overhead
-/// a linked list of chunks of tweets would probably be faster because of
-/// cache locality of fetches, but I haven't implemented that
-#[derive(PartialEq, Eq, PartialOrd, Ord, Clone, Copy)]
+#[derive(PartialEq, Eq, PartialOrd, Ord, Clone, Copy, NoUninit)]
+#[repr(C)]
 pub struct NextLink {
     pub ts: Timestamp,
     pub tweet_idx: TweetIdx,
 }
+assert_eq_size!(AtomicU64, NextLink);
 
 pub type FeedChain = Option<NextLink>;
+
+#[derive(Clone, Copy, Zeroable, Pod)]
+#[repr(C)]
+struct PodNextLink(u32, u32);
+assert_eq_size!(AtomicU64, PodNextLink);
+
+/// linked list of tweets to make appending fast and avoid space overhead
+/// a linked list of chunks of tweets would probably be faster because of
+/// cache locality of fetches, but I haven't implemented that
+pub struct AtomicChain(AtomicU64);
+
+impl AtomicChain {
+    pub fn none() -> Self {
+        AtomicChain(AtomicU64::new(0))
+    }
+
+    fn from_u64(as_u64: u64) -> FeedChain {
+        // we hope LLVM optimizes this into a no-op
+        let pod: PodNextLink = bytemuck::cast(as_u64);
+        match Timestamp::new(pod.0) {
+            Some(ts) => Some(NextLink {ts, tweet_idx: pod.1 }),
+            None => None,
+        }
+    }
+
+    pub fn try_add(&self, f: impl Fn(FeedChain) -> NextLink) {
+        let mut cur_u64 = self.0.load(std::sync::atomic::Ordering::SeqCst);
+        loop {
+            let next = f(Self::from_u64(cur_u64));
+            let as_u64: u64 = bytemuck::cast(next);
+            let res = self.0.compare_exchange(cur_u64, as_u64, std::sync::atomic::Ordering::SeqCst, std::sync::atomic::Ordering::SeqCst);
+            match res {
+                Ok(_) => break,
+                Err(v) => cur_u64 = v,
+            }
+        }
+    }
+
+    pub fn fetch(&self) -> FeedChain {
+        let as_u64 = self.0.load(std::sync::atomic::Ordering::SeqCst);
+        Self::from_u64(as_u64)
+    }
+}
 
 #[repr(align(64))]
 pub struct ChainedTweet {
@@ -84,16 +126,18 @@ impl<'a> Graph<'a> {
 pub struct Datastore<'a> {
     pub graph: Graph<'a>,
     pub tweets: SharedPool<ChainedTweet>,
-    pub feeds: Vec<FeedChain>,
+    pub feeds: Vec<AtomicChain>,
 }
 
 impl<'a> Datastore<'a> {
     pub fn add_tweet(&mut self, tweet: Tweet, user_id: UserIdx) {
-        let prev_tweet = self.feeds[user_id as usize];
         let ts = tweet.ts;
         let chained = ChainedTweet { tweet, prev_tweet };
         let tweet_idx = self.tweets.push(chained) as TweetIdx;
-        self.feeds[user_id as usize] = Some(NextLink { ts, tweet_idx });
+        self.feeds[user_id as usize].try_add(|prev_tweet| {
+            let prev_tweet = self.feeds[user_id as usize].fetch();
+            NextLink {ts, tweet_idx}
+        });
     }
 
     pub fn prefetch_tweet(&self, tweet_idx: TweetIdx) {
