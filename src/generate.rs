@@ -4,7 +4,7 @@ use crate::pool::SharedPool;
 use bytemuck::cast_slice;
 use memmap2::Mmap;
 use rand::seq::SliceRandom;
-use rand::SeedableRng;
+use rand::{Rng, SeedableRng};
 use rand_wyrand::WyRand;
 use std::fs::File;
 use std::ops::Deref;
@@ -28,13 +28,17 @@ impl Default for TweetGeneratorConfig {
 pub struct TweetGenerator {
     // config: TweetGeneratorConfig,
     tweeting_users: Vec<UserIdx>,
-    pub viewing_users: Vec<UserIdx>,
     rng: WyRand,
     ts: Timestamp,
 }
 
+pub type ViewingUsers = Vec<UserIdx>;
+
 impl TweetGenerator {
-    pub fn new<'a>(config: TweetGeneratorConfig, graph: Graph<'a>) -> (Self, Datastore<'a>) {
+    pub fn new<'a>(
+        config: TweetGeneratorConfig,
+        graph: Graph<'a>,
+    ) -> (Self, ViewingUsers, Datastore<'a>) {
         let feeds: Vec<AtomicChain> = (0..graph.users.len())
             .map(|_| AtomicChain::none())
             .collect();
@@ -60,7 +64,6 @@ impl TweetGenerator {
         let this = Self {
             // config,
             tweeting_users,
-            viewing_users,
             rng,
             ts: START_TIME,
         };
@@ -71,7 +74,7 @@ impl TweetGenerator {
             feeds,
         };
 
-        (this, data)
+        (this, viewing_users, data)
     }
 
     pub fn gen_tweet(&mut self) -> (UserIdx, Tweet) {
@@ -86,6 +89,24 @@ impl TweetGenerator {
         for _ in 0..n {
             let (user_id, tweet) = self.gen_tweet();
             data.add_tweet(tweet, user_id);
+        }
+    }
+
+    pub fn fork_seed(&mut self) -> u64 {
+        self.rng.gen()
+    }
+}
+
+pub struct ViewGenerator<'a> {
+    pub viewing_users: &'a [UserIdx],
+    rng: WyRand,
+}
+
+impl<'a> ViewGenerator<'a> {
+    pub fn new(seed: u64, viewing_users: &'a [UserIdx]) -> Self {
+        Self {
+            rng: WyRand::from_seed(seed.to_le_bytes()),
+            viewing_users,
         }
     }
 

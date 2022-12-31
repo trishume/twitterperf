@@ -10,6 +10,9 @@ pub struct SharedPool<T> {
     buf: NonNull<T>,
 }
 
+unsafe impl<T: Sync> Sync for SharedPool<T> {}
+unsafe impl<T: Send> Send for SharedPool<T> {}
+
 // https://vgel.me/posts/mmap-arena-alloc/
 impl<T> SharedPool<T> {
     /// It doesn't matter that much how large this is but let's go for 34GB
